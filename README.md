@@ -1,4 +1,4 @@
-# BeatFlow: Text-to-MIDI
+# BeatFlow: AI Full Arrangement Generator
 
 <img width="2557" height="1300" alt="9b599bf11155d10245da0f04d55e6f33" src="https://github.com/user-attachments/assets/45b009ff-c283-41fd-a875-04fbf933aa02" />
 
