@@ -1,17 +1,18 @@
 "use client"
 
 import { useRef, useEffect, useCallback } from "react"
+import { usePlayhead } from "@/hooks/use-playhead"
 
 interface TimelineProps {
   totalBeats: number
   beatWidth: number
-  playheadBeat: number
   onSeek: (beat: number) => void
 }
 
-export function Timeline({ totalBeats, beatWidth, playheadBeat, onSeek }: TimelineProps) {
+export function Timeline({ totalBeats, beatWidth, onSeek }: TimelineProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const height = 24
+  const playheadBeat = usePlayhead()
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -47,7 +48,10 @@ export function Timeline({ totalBeats, beatWidth, playheadBeat, onSeek }: Timeli
       const px = playheadBeat * beatWidth
       ctx.fillStyle = "hsl(0, 100%, 60%)"
       ctx.beginPath()
-      ctx.moveTo(px - 6, 0); ctx.lineTo(px + 6, 0); ctx.lineTo(px, 8); ctx.fill()
+      ctx.moveTo(px - 6, 0)
+      ctx.lineTo(px + 6, 0)
+      ctx.lineTo(px, 8)
+      ctx.fill()
     }
   }, [totalBeats, beatWidth, playheadBeat])
 

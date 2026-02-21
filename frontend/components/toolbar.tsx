@@ -1,26 +1,27 @@
 "use client"
 
-import {
-  MousePointer2,
-  Pencil,
-  Eraser,
-  Play,
-  Square,
-  SkipBack,
-  Download,
-  Trash2,
-  Copy,
-  Clipboard,
-  Undo2,
+import { memo } from "react"
+import { 
+  MousePointer2, 
+  Pencil, 
+  Eraser, 
+  Play, 
+  Square, 
+  SkipBack, 
+  Download, 
+  Trash2, 
+  Copy, 
+  Clipboard, 
+  Undo2, 
   Redo2,
-} from "lucide-react"
+ } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue, 
 } from "@/components/ui/select"
 import {
   Tooltip,
@@ -29,32 +30,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
-import { SNAP_VALUES, Track, TRACK_COLORS } from "@/lib/music-types"
-
-interface ToolbarProps {
-  tool: "select" | "draw" | "erase"
-  onToolChange: (tool: "select" | "draw" | "erase") => void
-  snapValue: number
-  onSnapChange: (value: number) => void
-  isPlaying: boolean
-  onPlay: () => void
-  onStop: () => void
-  onRewind: () => void
-  bpm: number
-  onBpmChange: (bpm: number) => void
-  currentBeat: number
-  tracks: Track[]
-  activeTrackId: string
-  onActiveTrackChange: (id: string) => void
-  onExport: () => void
-  onDelete: () => void
-  onCopy: () => void
-  onPaste: () => void
-  onUndo: () => void
-  onRedo: () => void
-  canUndo: boolean
-  canRedo: boolean
-}
+import { SNAP_VALUES, TRACK_COLORS } from "@/lib/music-types"
+import { usePlayhead } from "@/hooks/use-playhead"
+import { useMusicStore } from "@/hooks/use-music-state"
 
 function ToolButton({
   active,
@@ -79,6 +57,7 @@ function ToolButton({
               : "text-muted-foreground hover:text-foreground"
           }`}
           onClick={onClick}
+          disabled={!onClick}
         >
           {children}
         </Button>
@@ -90,30 +69,34 @@ function ToolButton({
   )
 }
 
-export function Toolbar({
-  tool,
-  onToolChange,
-  snapValue,
-  onSnapChange,
-  isPlaying,
-  onPlay,
-  onStop,
-  onRewind,
-  bpm,
-  onBpmChange,
-  currentBeat,
-  tracks,
-  activeTrackId,
-  onActiveTrackChange,
-  onExport,
-  onDelete,
-  onCopy,
-  onPaste,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
-}: ToolbarProps) {
+export const Toolbar = memo(function Toolbar() {
+  const tool = useMusicStore(s => s.tool)
+  const onToolChange = useMusicStore(s => s.setTool)
+  const snapValue = useMusicStore(s => s.snapValue)
+  const onSnapChange = useMusicStore(s => s.setSnapValue)
+  const isPlaying = useMusicStore(s => s.isPlaying)
+  const onPlay = useMusicStore(s => s.play)
+  const onStop = useMusicStore(s => s.stop)
+  const onRewind = useMusicStore(s => s.rewind)
+  const bpm = useMusicStore(s => s.bpm)
+  const onBpmChange = useMusicStore(s => s.setBpm)
+  const tracks = useMusicStore(s => s.tracks)
+  const activeTrackId = useMusicStore(s => s.activeTrackId)
+  const onActiveTrackChange = useMusicStore(s => s.setActiveTrackId)
+  const onExport = useMusicStore(s => s.exportMidi)
+  const onDelete = useMusicStore(s => s.deleteSelected)
+  const onCopy = useMusicStore(s => s.copySelected)
+  const onPaste = useMusicStore(s => s.pasteSelected)
+  const onUndo = useMusicStore(s => s.triggerUndo)
+  const onRedo = useMusicStore(s => s.triggerRedo)
+  const historyIndex = useMusicStore(s => s.historyIndex)
+  const historyLength = useMusicStore(s => s.history.length)
+
+  const canUndo = historyIndex > 0
+  const canRedo = historyIndex < historyLength - 1
+
+  const rawBeat = usePlayhead()
+  const currentBeat = Math.max(0, rawBeat)
   const bar = Math.floor(currentBeat / 4) + 1
   const beat = Math.floor(currentBeat % 4) + 1
   const tick = Math.floor((currentBeat % 1) * 100)
@@ -175,7 +158,7 @@ export function Toolbar({
               <Square className="h-3.5 w-3.5" />
             </ToolButton>
           ) : (
-            <ToolButton onClick={onPlay} label="Play (Space)">
+            <ToolButton onClick={() => onPlay()} label="Play (Space)">
               <Play className="h-3.5 w-3.5" />
             </ToolButton>
           )}
@@ -296,4 +279,4 @@ export function Toolbar({
       </div>
     </TooltipProvider>
   )
-}
+})

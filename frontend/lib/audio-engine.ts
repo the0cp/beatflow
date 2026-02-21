@@ -2,6 +2,14 @@
 
 import { NoteEvent } from "./music-types"
 
+export const playheadEventTarget = new EventTarget()
+export let globalCurrentBeat = -1
+
+export function updatePlayhead(beat: number) {
+  globalCurrentBeat = beat
+  playheadEventTarget.dispatchEvent(new CustomEvent('tick', { detail: beat }))
+}
+
 let audioContext: AudioContext | null = null
 let sf2: any = null
 let sfumatoModule: any = null
@@ -69,7 +77,6 @@ export function startPlayback(
   notes: NoteEvent[],
   bpm: number,
   startBeat: number,
-  onTick: (beat: number) => void,
   onEnd: () => void,
   mutedTracks?: Set<string>
 ): PlaybackController {
@@ -79,6 +86,8 @@ export function startPlayback(
   let intervalId: any = null
   const playbackStart = ctx.currentTime
   const scheduled = new Set<string>()
+  const activeStops: Array<(time: number) => void> = []
+
   const maxBeat = notes.reduce((max, n) => Math.max(max, n.start + n.duration), 0)
 
   Promise.all([getSf2(), getSfumato()]).then(([sf, { startPresetNote }]) => {
@@ -91,25 +100,25 @@ export function startPlayback(
       notes.forEach(n => {
         if (scheduled.has(n.id) || (mutedTracks && mutedTracks.has(n.track_id))) return
         const noteTime = playbackStart + (n.start - startBeat) * secPerBeat
+        
         if (noteTime <= ahead && noteTime >= playbackStart - 0.05) {
           const config = TRACK_MAP[n.track_id] || TRACK_MAP.t_piano
           const pitch = config.channel === 9 ? (DRUM_NOTE_MAP[n.track_id] || 36) : n.note
           const preset = findPreset(sf, config.channel, config.program)
-          
           const velocityGain = n.velocity / 127
-          
           const validNoteTime = Math.max(0, noteTime)
           
           const stopHandle = startPresetNote(ctx, preset, pitch, validNoteTime, { gain: velocityGain })
-          
           const releaseTime = 0.1
-          stopHandle(noteTime + n.duration * secPerBeat + releaseTime)
           
+          stopHandle(noteTime + n.duration * secPerBeat + releaseTime)
+          activeStops.push(stopHandle)
           scheduled.add(n.id)
         }
       })
 
-      onTick(currentBeat)
+      updatePlayhead(currentBeat)
+      
       if (currentBeat >= maxBeat + 0.5) {
         stopped = true
         clearInterval(intervalId)
@@ -122,6 +131,10 @@ export function startPlayback(
     stop: () => {
       stopped = true
       if (intervalId) clearInterval(intervalId)
+      
+      const now = getAudioContext().currentTime
+      activeStops.forEach(stopFn => stopFn(now))
+      activeStops.length = 0
     },
     isPlaying: () => !stopped,
     getCurrentBeat: () => {
@@ -136,7 +149,7 @@ export async function preloadSounds() {
     await Promise.all([getSfumato(), getSf2()])
     return true
   } catch (error) {
-    console.error("Failed to load soundfont:", error)
+    console.error(error)
     return false
   }
 }

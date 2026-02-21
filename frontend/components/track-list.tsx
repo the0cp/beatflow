@@ -1,28 +1,20 @@
 "use client"
 
+import { memo } from "react"
 import { Volume2, VolumeX, Eye, EyeOff } from "lucide-react"
-import { Track, TRACK_COLORS, NoteEvent } from "@/lib/music-types"
+import { TRACK_COLORS } from "@/lib/music-types"
 import { Button } from "@/components/ui/button"
+import { useMusicStore } from "@/hooks/use-music-state"
 
-interface TrackListProps {
-  tracks: Track[]
-  activeTrackId: string
-  notes: NoteEvent[]
-  hiddenTracks: Set<string>
-  onActiveTrackChange: (id: string) => void
-  onToggleHidden: (id: string) => void
-  onToggleMute: (id: string) => void
-}
+export const TrackList = memo(function TrackList() {
+  const tracks = useMusicStore(s => s.tracks)
+  const activeTrackId = useMusicStore(s => s.activeTrackId)
+  const notes = useMusicStore(s => s.notes)
+  const hiddenTracks = useMusicStore(s => s.hiddenTracks)
+  const onActiveTrackChange = useMusicStore(s => s.setActiveTrackId)
+  const onToggleHidden = useMusicStore(s => s.toggleHidden)
+  const onToggleMute = useMusicStore(s => s.toggleMute)
 
-export function TrackList({
-  tracks,
-  activeTrackId,
-  notes,
-  hiddenTracks,
-  onActiveTrackChange,
-  onToggleHidden,
-  onToggleMute,
-}: TrackListProps) {
   return (
     <div className="flex flex-col gap-0.5 p-2">
       <span className="text-xs text-muted-foreground uppercase tracking-wider px-1 mb-1">
@@ -97,4 +89,4 @@ export function TrackList({
       })}
     </div>
   )
-}
+})

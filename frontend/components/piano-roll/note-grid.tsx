@@ -4,7 +4,6 @@ import {
   useRef,
   useEffect,
   useCallback,
-  useState,
   type MouseEvent as ReactMouseEvent,
 } from "react"
 import {
@@ -14,6 +13,7 @@ import {
   TRACK_COLORS,
 } from "@/lib/music-types"
 import { playNotePreview } from "@/lib/audio-engine"
+import { usePlayhead } from "@/hooks/use-playhead"
 
 interface NoteGridProps {
   notes: NoteEvent[]
@@ -24,7 +24,6 @@ interface NoteGridProps {
   totalBeats: number
   snapValue: number
   tool: "select" | "draw" | "erase"
-  playheadBeat: number
   activeTrackId: string
   onNotesChange: (notes: NoteEvent[]) => void
   onSelectionChange: (ids: Set<string>) => void
@@ -45,7 +44,7 @@ export function NoteGrid({
   beatWidth,
   totalBeats,
   snapValue,
-  playheadBeat,
+  tool,
   activeTrackId,
   onNotesChange,
   onSelectionChange,
@@ -56,6 +55,7 @@ export function NoteGrid({
   const containerRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState>({ type: "none" })
   const requestRef = useRef<number>()
+  const playheadBeat = usePlayhead()
 
   const [low, high] = noteRange
   const totalRows = high - low + 1
@@ -69,7 +69,8 @@ export function NoteGrid({
   const beatToX = useCallback((beat: number) => beat * beatWidth, [beatWidth])
 
   const getNoteAt = useCallback((x: number, y: number) => {
-    const beat = xToBeat(x), midi = yToMidi(y)
+    const beat = xToBeat(x)
+    const midi = yToMidi(y)
     return notes.findLast(n => n.track_id === activeTrackId && n.note === midi && beat >= n.start && beat <= n.start + n.duration) || null
   }, [notes, xToBeat, yToMidi, activeTrackId])
 
@@ -78,8 +79,10 @@ export function NoteGrid({
     const canvases = [bgCanvasRef.current, notesCanvasRef.current, interactionCanvasRef.current]
     canvases.forEach(c => {
       if (!c) return
-      c.width = canvasWidth * dpr; c.height = canvasHeight * dpr
-      c.style.width = `${canvasWidth}px`; c.style.height = `${canvasHeight}px`
+      c.width = canvasWidth * dpr
+      c.height = canvasHeight * dpr
+      c.style.width = `${canvasWidth}px`
+      c.style.height = `${canvasHeight}px`
       c.getContext("2d")?.scale(dpr, dpr)
     })
   }, [canvasWidth, canvasHeight])
@@ -92,15 +95,27 @@ export function NoteGrid({
       const y = i * rowHeight
       ctx.fillStyle = isBlackKey(high - i) ? "hsl(220, 18%, 8%)" : "hsl(220, 18%, 10%)"
       ctx.fillRect(0, y, canvasWidth, rowHeight)
-      ctx.strokeStyle = "hsl(220, 14%, 14%)"; ctx.lineWidth = 0.5
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvasWidth, y); ctx.stroke()
+      ctx.strokeStyle = "hsl(220, 14%, 14%)"
+      ctx.lineWidth = 0.5
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(canvasWidth, y)
+      ctx.stroke()
     }
     for (let i = 0; i <= totalBeats; i++) {
-      const x = i * beatWidth, isBar = i % 4 === 0
+      const x = i * beatWidth
+      const isBar = i % 4 === 0
       ctx.strokeStyle = isBar ? "hsl(220, 14%, 22%)" : "hsl(220, 14%, 14%)"
       ctx.lineWidth = isBar ? 1 : 0.5
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvasHeight); ctx.stroke()
-      if (isBar) { ctx.fillStyle = "hsl(215, 12%, 35%)"; ctx.font = "9px monospace"; ctx.fillText(`${Math.floor(i / 4) + 1}`, x + 3, 10) }
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x, canvasHeight)
+      ctx.stroke()
+      if (isBar) { 
+        ctx.fillStyle = "hsl(215, 12%, 35%)"
+        ctx.font = "9px monospace"
+        ctx.fillText(`${Math.floor(i / 4) + 1}`, x + 3, 10) 
+      }
     }
   }, [canvasWidth, canvasHeight, totalRows, high, rowHeight, beatWidth, totalBeats])
 
@@ -113,11 +128,22 @@ export function NoteGrid({
 
     for (const n of notes) {
       if (movingIds.has(n.id)) continue
-      const x = beatToX(n.start), y = midiToY(n.note), w = n.duration * beatWidth, active = n.track_id === activeTrackId
+      const x = beatToX(n.start)
+      const y = midiToY(n.note)
+      const w = n.duration * beatWidth
+      const active = n.track_id === activeTrackId
+      
       ctx.globalAlpha = active ? 0.85 : 0.15
       ctx.fillStyle = selectedNoteIds.has(n.id) ? "hsl(200, 70%, 55%)" : (TRACK_COLORS[n.track_id] || "gray")
-      ctx.beginPath(); ctx.roundRect(x + 0.5, y + 1, Math.max(w - 1, 2), rowHeight - 2, 2); ctx.fill()
-      if (active && selectedNoteIds.has(n.id)) { ctx.strokeStyle = "hsl(200, 90%, 70%)"; ctx.lineWidth = 1.5; ctx.stroke() }
+      ctx.beginPath()
+      ctx.roundRect(x + 0.5, y + 1, Math.max(w - 1, 2), rowHeight - 2, 2)
+      ctx.fill()
+      
+      if (active && selectedNoteIds.has(n.id)) { 
+        ctx.strokeStyle = "hsl(200, 90%, 70%)"
+        ctx.lineWidth = 1.5
+        ctx.stroke() 
+      }
     }
   }, [notes, selectedNoteIds, activeTrackId, canvasWidth, canvasHeight, beatToX, midiToY, beatWidth, rowHeight])
 
@@ -130,14 +156,24 @@ export function NoteGrid({
 
     if (playheadBeat >= 0) {
       const px = beatToX(playheadBeat)
-      ctx.strokeStyle = "white"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvasHeight); ctx.stroke()
+      ctx.strokeStyle = "white"
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(px, 0)
+      ctx.lineTo(px, canvasHeight)
+      ctx.stroke()
     }
 
     const drag = dragRef.current
     const drawTempNote = (n: NoteEvent) => {
-      const x = beatToX(n.start), y = midiToY(n.note), w = n.duration * beatWidth
-      ctx.fillStyle = "hsl(200, 70%, 55%)"; ctx.globalAlpha = 0.9
-      ctx.beginPath(); ctx.roundRect(x + 0.5, y + 1, Math.max(w - 1, 2), rowHeight - 2, 2); ctx.fill()
+      const x = beatToX(n.start)
+      const y = midiToY(n.note)
+      const w = n.duration * beatWidth
+      ctx.fillStyle = "hsl(200, 70%, 55%)"
+      ctx.globalAlpha = 0.9
+      ctx.beginPath()
+      ctx.roundRect(x + 0.5, y + 1, Math.max(w - 1, 2), rowHeight - 2, 2)
+      ctx.fill()
     }
 
     if (drag.type === "draw") drawTempNote(drag.tempNote)
@@ -153,8 +189,10 @@ export function NoteGrid({
       }))
     }
     if (drag.type === "marquee") {
-      ctx.strokeStyle = "hsl(200, 70%, 55%)"; ctx.setLineDash([4, 4])
+      ctx.strokeStyle = "hsl(200, 70%, 55%)"
+      ctx.setLineDash([4, 4])
       ctx.strokeRect(Math.min(drag.startX, drag.endX), Math.min(drag.startY, drag.endY), Math.abs(drag.endX - drag.startX), Math.abs(drag.endY - drag.startY))
+      ctx.setLineDash([])
     }
     requestRef.current = requestAnimationFrame(renderInteraction)
   }, [playheadBeat, canvasWidth, canvasHeight, beatToX, notes, low, high, midiToY, beatWidth, rowHeight])
@@ -171,7 +209,10 @@ export function NoteGrid({
 
   const handleMouseDown = (e: ReactMouseEvent) => {
     e.preventDefault()
-    const { x, y } = getCanvasPos(e), beat = xToBeat(x), midi = yToMidi(y), noteAt = getNoteAt(x, y)
+    const { x, y } = getCanvasPos(e)
+    const beat = xToBeat(x)
+    const midi = yToMidi(y)
+    const noteAt = getNoteAt(x, y)
 
     if (e.button === 2) {
       if (noteAt) onNotesChange(notes.filter(n => n.id !== noteAt.id))
@@ -198,7 +239,22 @@ export function NoteGrid({
   }
 
   const handleMouseMove = (e: ReactMouseEvent) => {
-    const { x, y } = getCanvasPos(e), drag = dragRef.current
+    const { x, y } = getCanvasPos(e)
+    const drag = dragRef.current
+
+    if (drag.type === "none") {
+      const noteAt = getNoteAt(x, y)
+      if (interactionCanvasRef.current) {
+        if (noteAt) {
+          const isEdge = Math.abs(x - beatToX(noteAt.start + noteAt.duration)) < 6
+          interactionCanvasRef.current.style.cursor = isEdge ? "ew-resize" : "pointer"
+        } else {
+          interactionCanvasRef.current.style.cursor = tool === "draw" ? "crosshair" : "default"
+        }
+      }
+      return
+    }
+
     if (drag.type === "draw") {
       drag.tempNote = { ...drag.tempNote, duration: Math.max(snap(xToBeat(x) - xToBeat(drag.startX)), snapValue || 0.125) }
     } else if (drag.type === "move") {
@@ -207,7 +263,8 @@ export function NoteGrid({
     } else if (drag.type === "resize") {
       drag.currentDur = Math.max(snapValue || 0.125, snap(xToBeat(x)) - drag.startNote.start)
     } else if (drag.type === "marquee") {
-      drag.endX = x; drag.endY = y
+      drag.endX = x
+      drag.endY = y
     }
   }
 
@@ -231,7 +288,13 @@ export function NoteGrid({
     <div ref={containerRef} className="relative overflow-auto flex-1" onContextMenu={e => e.preventDefault()}>
       <canvas ref={bgCanvasRef} className="absolute inset-0" />
       <canvas ref={notesCanvasRef} className="absolute inset-0" />
-      <canvas ref={interactionCanvasRef} className="absolute inset-0" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} />
+      <canvas 
+        ref={interactionCanvasRef} 
+        className="absolute inset-0" 
+        onMouseDown={handleMouseDown} 
+        onMouseMove={handleMouseMove} 
+        onMouseUp={handleMouseUp} 
+      />
     </div>
   )
 }

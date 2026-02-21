@@ -128,7 +128,7 @@ export function notesToMusicData(
 }
 
 export const DEFAULT_TRACKS: Track[] = [
-  { id: "t_piano", instrument: "Electric Piano", type: "instrument" },
+  { id: "t_piano", instrument: "Piano", type: "instrument" },
   { id: "t_bass", instrument: "Finger Bass", type: "instrument" },
   { id: "t_kick", instrument: "Kick", type: "percussion" },
   { id: "t_snare", instrument: "Snare", type: "percussion" },
