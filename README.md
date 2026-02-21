@@ -1,6 +1,6 @@
 # BeatFlow: AI Full Arrangement Generator
 
-<img width="2557" height="1300" alt="9b599bf11155d10245da0f04d55e6f33" src="https://github.com/user-attachments/assets/45b009ff-c283-41fd-a875-04fbf933aa02" />
+<img width="2556" height="1301" alt="image" src="https://github.com/user-attachments/assets/5f68ba10-5a3a-47a4-a2ce-0fcb2d94fa59" />
 
 BeatFlow is an LLM-powered music prototyping tool. Enter a prompt and it generates multi-track MIDI arrangements (chords, bass, drums). It features a full in-browser Piano Roll for editing, playback, and direct MIDI export to your DAW.
 
