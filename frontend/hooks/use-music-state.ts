@@ -160,7 +160,7 @@ export const useMusicStore = create<MusicState>((set, get) => ({
   generate: async (prompt) => {
     set({ isGenerating: true })
     try {
-      const res = await fetch("/backend/generate", {
+      const res = await fetch("http://127.0.0.1:8000/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
